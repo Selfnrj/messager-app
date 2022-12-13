@@ -5,17 +5,24 @@ import { v4 as uuidv4 } from 'uuid';
 import { Message } from "../typings";
 import useSWR from "swr";
 import fetcher from "../utils/fetchMessages";
+import { unstable_getServerSession } from "next-auth";
+import { useSession } from "next-auth/react";
 
-function ChatInput() {
+type Props = {
+  session: Awaited<ReturnType<typeof unstable_getServerSession>>
+}
+
+function ChatInput({ session }: Props) {
   const [input, setInput] = useState("");
   const { data: messages, error, mutate } = useSWR("/api/getMessages", fetcher);
+  const { data: sessions } = useSession();
 
-  console.log(messages);
+  //console.log(messages);
 
   const addMessage = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!input) return;
+    if (!input || !session) return;
 
     const messageToSend = input;
 
@@ -27,9 +34,9 @@ function ChatInput() {
       id,
       message: messageToSend,
       created_at: Date.now(),
-      username: 'ambjorn',
-      profilePic: 'https://scontent-arn2-1.xx.fbcdn.net/v/t39.30808-6/275938799_10160102867642146_1702076762429506794_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=09cbfe&_nc_ohc=qQ2YHjcMmfgAX8j68jY&_nc_ht=scontent-arn2-1.xx&oh=00_AfCuLdYyBHLbAbJ2PwIRJvgHR_VnFLzgthSS31SDmlHG0A&oe=639B0EA9',
-      email: 'ambjorn89@gmail.com'
+      username: sessions?.user?.name!,
+      profilePic: sessions?.user?.image!,
+      email: sessions?.user?.email!,
     };
 
     const uploadMessageToUpstash = async () => {
@@ -58,6 +65,7 @@ function ChatInput() {
       <input  
         type="text"
         value={input}
+        disabled={!session}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Enter message here..." 
         className="flex-1 rounded border border-gray-300 focus:outline-none
